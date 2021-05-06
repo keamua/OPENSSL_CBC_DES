@@ -1,0 +1,2 @@
+# OPENSSL_CBC_DES
+用openssl库里面简单的一些函数实现，cbc模式下的des加密
