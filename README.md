@@ -1,19 +1,22 @@
 # OPENSSL_CBC_DES
 用openssl库里面简单的一些函数实现，cbc模式下的des加密
-具体要求如下：
+在终端使用命令 
+.\DES_CBC.exe fedcba9876543210 40fedf386da13d57 test.txt test.des
+执行操作
+实验具体要求如下：
 
-                        Exercise 1 CBC Modes of DES
+# Exercise 1 CBC Modes of DES
 
 
-	DES encryption / decryption
+## DES encryption / decryption
 In this project, we will be coding a tool to encrypt and decrypt files using DES in mode CBC (Cipher Block Chaining). “tempdes.c” is a skeleton file that encrypts/decrypts a fixed 64-bit block. In this assignment, you will extend this skeleton code to take an arbitrarily sized input file and encrypt/decrypt it, by implementing the Cipher Block Chaining DES mode of operation. You must actually implement the CBC mode, and you are not allowed to use any built-in function besides what is present in tempdes.c. You can find information about DES-CBC in your text book.
 
 在这个项目内，我们将写一个CBC模式的DES加解密程序，“tempdes.c”是个模板文件来加解密一个固定的64比特的块。在这次任务中，你要把这个模板代码扩展成一个任意尺寸的输入文件并完成加解密，通过完成CBC-DES的模式。你一定要完成CBC模式，同时不允许用任何除了模板文件外的任何内涵函数，你可以找到资料在你的书里。
 You may want to check your work against the input file "test.txt". If you have implemented the algorithm correctly, you should get the output in "test.des". 
 你可能想检查一下你的对test.txt的加密成果，如果你完成的正确，你应该能得到输出在test.des。
 
-	Requirements
-	需求
+Requirements
+需求
 
 a.Just use the built in functions that appear in tempdes.c
 	只用在tempdes.c 出现的函数
@@ -21,7 +24,7 @@ b.Your code should result in an executable of the following form:
 	应该得到一个可执行文件有下面的输入格式
 ./tempdes	iv	key	inputfile	outputfile
 
-	The parameters description is as follows:
+The parameters description is as follows:
 参数的描述如下
 - iv: the actual IV to use: this must be represented as a string comprised only of hexadecimal digits.
 初始化向量，一定是个16进制的数
@@ -35,7 +38,7 @@ b.Your code should result in an executable of the following form:
 	./tempdes	fecdba9876543210 	0123456789abcdef 	test.txt 		test.des
 	例子
 
-	If any of the arguments is invalid, your code should return an appropriate 	message to the user. Be sure to consider the case when the keys are invalid.
+If any of the arguments is invalid, your code should return an appropriate 	message to the user. Be sure to consider the case when the keys are invalid.
 如果某个参数是无效的，你应该返回一个信息给使用者，确保考虑当密钥无效时的情况
 
 
