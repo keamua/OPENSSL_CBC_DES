@@ -1,184 +1,184 @@
-#include <openssl/des.h>
+/*
+* authorï¼š		æœ±ä¸€é¸£
+* dateï¼š		2021/05/05
+* descriptionï¼š	CBCæ¨¡å¼ä¸‹çš„DESåŠ è§£å¯†çš„å®ç°
+*/
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
-#pragma comment(lib, "C:\\Users\\Administrator\\Desktop\\¿Î¼ş\\´óÈıÏÂ\\Ëã·¨Ğ­Òé\\Ex1\\Ex1\\openssl-0[1].9.8k_WIN32\\lib\\libeay32.lib") 
-#pragma comment(lib, "C:\\Users\\Administrator\\Desktop\\¿Î¼ş\\´óÈıÏÂ\\Ëã·¨Ğ­Òé\\Ex1\\Ex1\\openssl-0[1].9.8k_WIN32\\lib\\ssleay32.lib")
+#pragma comment(lib, "C:\\Users\\Dreaming\\Desktop\\å¤§ä¸‰ä¸‹\\Ex1\\openssl-0[1].9.8k_WIN32\\lib\\libeay32.lib") 
+#pragma comment(lib, "C:\\Users\\Dreaming\\Desktop\\å¤§ä¸‰ä¸‹\\Ex1\\openssl-0[1].9.8k_WIN32\\lib\\ssleay32.lib")
+
+#include <openssl/des.h>
 
 #define ENC 1
 #define DEC 0
-
 DES_key_schedule key;
 
-// ÎŞ·ûºÅ×Ö·û´®×ªÎŞ·ûºÅ16½øÖÆ×Ö·û
+// æ— ç¬¦å·å­—ç¬¦ä¸²è½¬æ— ç¬¦å·16è¿›åˆ¶å­—ç¬¦
 void strToHex(const_DES_cblock input, unsigned char *output) {
-    int arSize = 8;
     unsigned int byte;
-    for(int i=0; i<arSize; i++) {
+    for(int i=0; i<8; i++) {
         if(sscanf((const char*)(char*)input, "%2x", &byte) != 1) {
             break;
         }
         output[i] = byte;
         input += 2;
     }
-
 }
 
-// °ÑÒ»¸öÎŞ·ûºÅ×Ö·û´®¸´ÖÆµ½ÁíÒ»¸ö×Ö·û´®
+// æŠŠä¸€ä¸ªæ— ç¬¦å·å­—ç¬¦ä¸²å¤åˆ¶åˆ°å¦ä¸€ä¸ªå­—ç¬¦ä¸²
 void copyValue(const_DES_cblock val1, unsigned char *val2, int size) {
-    
     for(int i=0; i<size; i++) {
         val2[i] = val1[i];
     }
 }
 
-// ÓÃÁ½¸öÎŞ·ûºÅ³¤×Ö·û£¨4×Ö½Ú£©£¬¶ÔÉÏ´Î¼ÓÃÜ½á¹ûºÍÕâ´ÎµÄÃ÷ÎÄdata½øĞĞÒì»ò
-void doBitwiseXor(DES_LONG *xorValue, DES_LONG* data, const_DES_cblock roundOutput) {
+// ç”¨ä¸¤ä¸ªæ— ç¬¦å·é•¿å­—ç¬¦ï¼ˆ4å­—èŠ‚ï¼‰ï¼Œå¯¹ä¸Šæ¬¡åŠ å¯†ç»“æœå’Œè¿™æ¬¡çš„æ˜æ–‡dataè¿›è¡Œå¼‚æˆ–
+void LongXor(DES_LONG *xor, DES_LONG* data, const_DES_cblock iv) {
     DES_LONG temp[2];
-    memcpy(temp, roundOutput, 8*sizeof(unsigned char));	// ×ª»»³ÉÏàÍ¬µÄÀàĞÍ
+    memcpy(temp, iv, 8*sizeof(unsigned char));	// è½¬æ¢æˆç›¸åŒçš„ç±»å‹
     for(int i=0; i<2; i++) {
-        xorValue[i] = temp[i] ^ data[i];
+        xor[i] = temp[i] ^ data[i];
     }
 }
 
-// ´òÓ¡Ò»¸ö8×Ö½ÚµÄdes¿é
+// æ‰“å°ä¸€ä¸ª8å­—èŠ‚çš„deså—
 void printvalueOfDesBlock(const_DES_cblock val) {
-    for(int i=0; i<8; i++) {
+    for(int i=0; i<7; i++) {
         printf("0x%x,", val[i]);
     }
+	printf("0x%x", val[7]);
     printf("\n");
 }
-
-
-
-/*
-* author£º		ÖìÒ»Ãù
-* date£º		2021/05/05
-* description£º	CBCÄ£Ê½ÏÂµÄDES¼ÓÃÜº¯Êı
-*/
-void CBCenc(FILE *inpFile,FILE *outFile,const_DES_cblock iv){
-	DES_LONG data[2] = {0,0},temp[2] = {0,0}; // dataÓÃÀ´´¢´æÃ¿´Î¶ÁÈ¡µÄ8×Ö½Ú64±ÈÌØµÄÊı¾İ£¬tempÓÃÀ´´¢´æ¼ÓÃÜºóµÄÊı¾İ
-	int successfulBlockReadSize = fread(data, 1, 8, inpFile); // ´ÓÃ÷ÎÄÖĞ¶ÁÈ¡8×Ö½ÚµÄÊı¾İ
-	while(successfulBlockReadSize == 8){ // µ±ÄÜ¹»´ÓÃ÷ÎÄÖĞ¶Áµ½Êı¾İµÄÊ±ºò
-		doBitwiseXor(temp, data, iv); // ÏÈ½«Êı¾İºÍivÒì»ò
-		DES_encrypt1(temp,&key,ENC); // Òì»òµÄ½á¹û½øĞĞ¼ÓÃÜ
-		fwrite(temp, 8, 1, outFile); // ½«¼ÓÃÜµÄ½á¹ûĞ´µ½ÃÜÎÄÖĞ
-		memcpy(iv, temp, 2*sizeof(DES_LONG)); // ½«¼ÓÃÜµÄ½á¹û×÷ÎªÏÂÒ»´ÎµÄiv½øĞĞÒì»ò
-		data[0]=0;data[1]=0; // ÓÃ0Ìî³ädata
-		successfulBlockReadSize = fread(data, 1, 8, inpFile);
-		printf("%d,",successfulBlockReadSize);
+int checkhex(char* ch)
+{
+	if (strlen(ch)!= 16)
+		return -1;
+	for (int i=0;i<16;i++){
+		if(!(((ch[i]>='0')&&(ch[i]<='9'))
+			||((ch[i]>='A')&&(ch[i]<='F'))
+			||((ch[i]>='a')&&(ch[i]<='f'))))
+		return -1;
 	}
-	if(successfulBlockReadSize > 0) {
-        doBitwiseXor(temp, data, iv); // ÏÈ½«Êı¾İºÍivÒì»ò
-		DES_encrypt1(temp,&key,ENC); // Òì»òµÄ½á¹û½øĞĞ¼ÓÃÜ
-		fwrite(temp, 8, 1, outFile); // ½«¼ÓÃÜµÄ½á¹ûĞ´µ½ÃÜÎÄÖĞ
-		printf("¼ÓÃÜÍê³É×îºóÒ»¿é£¬Ìî³äÇ°µÄ´óĞ¡Îª%d¡£\n",successfulBlockReadSize);
-    }
-	printf("¼ÓÃÜÍê³É\n");	//¼ÓÃÜÍê³É
+	return 0;
 }
 
 /*
-* author£º		ÖìÒ»Ãù
-* date£º		2021/05/05
-* description£º	CBCÄ£Ê½ÏÂµÄDES½âÃÜº¯Êı
+* authorï¼š		æœ±ä¸€é¸£
+* dateï¼š		2021/05/05
+* descriptionï¼š	CBCæ¨¡å¼ä¸‹çš„DESåŠ å¯†å‡½æ•°
+*/
+void CBCenc(FILE *inpFile,FILE *outFile,const_DES_cblock IV){
+	const_DES_cblock iv ;
+	copyValue(IV,iv,sizeof(const_DES_cblock));
+	DES_LONG data[2] = {0,0},temp[2] = {0,0}; // dataç”¨æ¥å‚¨å­˜æ¯æ¬¡è¯»å–çš„8å­—èŠ‚64æ¯”ç‰¹çš„æ•°æ®ï¼Œtempç”¨æ¥å‚¨å­˜åŠ å¯†åçš„æ•°æ®
+	int mRead = fread(data, 1, 8, inpFile); // ä»æ˜æ–‡ä¸­è¯»å–8å­—èŠ‚çš„æ•°æ®
+	while(mRead > 0){ // å½“èƒ½å¤Ÿä»æ˜æ–‡ä¸­è¯»åˆ°æ•°æ®çš„æ—¶å€™
+		LongXor(temp, data, iv); // å…ˆå°†æ•°æ®å’Œivå¼‚æˆ–
+		DES_encrypt1(temp,&key,ENC); // å¼‚æˆ–çš„ç»“æœè¿›è¡ŒåŠ å¯†
+		fwrite(temp, 8, 1, outFile); // å°†åŠ å¯†çš„ç»“æœå†™åˆ°å¯†æ–‡ä¸­
+		memcpy(iv, temp, 2*sizeof(DES_LONG)); // å°†åŠ å¯†çš„ç»“æœä½œä¸ºä¸‹ä¸€æ¬¡çš„ivè¿›è¡Œå¼‚æˆ–
+		data[0]=0;data[1]=0; // ç”¨0å¡«å……data
+		mRead = fread(data, 1, 8, inpFile);
+	}
+	printf("åŠ å¯†å®Œæˆ\n");	//åŠ å¯†å®Œæˆ
+}
+
+/*
+* authorï¼š		æœ±ä¸€é¸£
+* dateï¼š		2021/05/05
+* descriptionï¼š	CBCæ¨¡å¼ä¸‹çš„DESè§£å¯†å‡½æ•°
 */
 
-void CBCdec(FILE *inpFile,FILE *outFile,const_DES_cblock iv){
-	DES_LONG data[2] = {0,0}; //dataÎª¶ÁÈ¡µÄÃÜÎÄ£¬temp1ÓÃÀ´´¢´æÏÂÒ»²½µÄiv£¬temp2ÓÃÀ´´¢´æ½âÃÜºóµÄ½á¹û
-	int successfulBlockReadSize = fread(data, 1, 8, inpFile); // ¶ÁÈ¡8×Ö½ÚµÄÃÜÎÄ
-	while(successfulBlockReadSize == 8){ // µ±»¹ÓĞÃÜÎÄÃ»ÓĞ¶ÁÈ¡ÍêµÄÊ±ºò
+void CBCdec(FILE *inpFile,FILE *outFile,const_DES_cblock IV){
+	const_DES_cblock iv ;
+	copyValue(IV,iv,sizeof(const_DES_cblock));
+	DES_LONG data[2] = {0,0}; //dataä¸ºè¯»å–çš„å¯†æ–‡ï¼Œtemp1ç”¨æ¥å‚¨å­˜ä¸‹ä¸€æ­¥çš„ivï¼Œtemp2ç”¨æ¥å‚¨å­˜è§£å¯†åçš„ç»“æœ
+	int cRead = fread(data, 1, 8, inpFile); // è¯»å–8å­—èŠ‚çš„å¯†æ–‡
+	while(cRead > 0){ // å½“è¿˜æœ‰å¯†æ–‡æ²¡æœ‰è¯»å–å®Œçš„æ—¶å€™
 		DES_LONG temp1[2],temp2[2];
-		memcpy(temp1, data, 2*sizeof(DES_LONG)); // ½«±¾ÂÖµÄÃÜÎÄ×÷ÎªÏÂÒ»´ÎµÄiv½øĞĞÒì»ò
-		DES_encrypt1(data,&key,DEC); // ½«ÃÜÎÄ½âÃÜ
-		doBitwiseXor(temp2, data, iv); // ½âÃÜºóµÄÔÙÓëivÒì»òÒ»´ÎµÃµ½Ã÷ÎÄ
-		fwrite(temp2, 8, 1, outFile); // ½«µÃµ½µÄÃ÷ÎÄĞ´µ½ÎÄ¼şÖĞ
-		memcpy(iv, temp1, 2*sizeof(DES_LONG)); // °ÑÕâÒ»ÂÖµÄÃÜÎÄ×÷ÎªÏÂÒ»ÂÖµÄiv
-		data[0]=0;data[1]=0; // ÓÃÀ´½øĞĞÌî³ä0
-		successfulBlockReadSize = fread(data, 1, 8, inpFile); // ¶ÁÈ¡ÏÂÒ»¸ö8×Ö½Ú¿é
+		memcpy(temp1, data, 2*sizeof(DES_LONG)); // å°†æœ¬è½®çš„å¯†æ–‡ä½œä¸ºä¸‹ä¸€æ¬¡çš„ivè¿›è¡Œå¼‚æˆ–
+		DES_encrypt1(data,&key,DEC); // å°†å¯†æ–‡è§£å¯†
+		LongXor(temp2, data, iv); // è§£å¯†åçš„å†ä¸ivå¼‚æˆ–ä¸€æ¬¡å¾—åˆ°æ˜æ–‡
+		fwrite(temp2, 8, 1, outFile); // å°†å¾—åˆ°çš„æ˜æ–‡å†™åˆ°æ–‡ä»¶ä¸­
+		memcpy(iv, temp1, 2*sizeof(DES_LONG)); // æŠŠè¿™ä¸€è½®çš„å¯†æ–‡ä½œä¸ºä¸‹ä¸€è½®çš„iv
+		data[0]=0;data[1]=0; // ç”¨æ¥è¿›è¡Œå¡«å……0
+		cRead = fread(data, 1, 8, inpFile); // è¯»å–ä¸‹ä¸€ä¸ª8å­—èŠ‚å—
 	}
-	if(successfulBlockReadSize > 0) {
-		DES_LONG temp1[2],temp2[2];
-        DES_encrypt1(data,&key,DEC); // ½«ÃÜÎÄ½âÃÜ
-		doBitwiseXor(temp2, data, iv); // ½âÃÜºóµÄÔÙÓëivÒì»òÒ»´ÎµÃµ½Ã÷ÎÄ
-		fwrite(temp2, 8, 1, outFile); // ½«µÃµ½µÄÃ÷ÎÄĞ´µ½ÎÄ¼şÖĞ
-		printf("½âÃÜÃÜÍê³É×îºóÒ»¿é£¬Ìî³äÇ°µÄ´óĞ¡Îª%d¡£\n",successfulBlockReadSize);
-    }
-	printf("½âÃÜÍê³É\n");
+	printf("è§£å¯†å®Œæˆ\n");
 }
 
 int main(int argc, char** argv)
 {
     if(argc != 5) {
         printf("USAGE ERROR \nusage: ./exec_file IV key input_file out_file\n");
+		/*
+		*	param:
+		*  ./cbcdes iv key inputfile outputfile
+		*	iv initial vector åˆå§‹å‚æ•°,16ä¸ª16è¿›åˆ¶å­—ç¬¦
+		*	key åˆå§‹å¯†é’¥ï¼Œ16ä¸ª16è¿›åˆ¶å­—ç¬¦
+		*	inputfile è¾“å…¥æ–‡ä»¶ï¼Œå³æ˜æ–‡
+		*	outputfile è¾“å‡ºæ–‡ä»¶ï¼Œå³å¯†æ–‡
+		*/
     }
 	else {
-        const_DES_cblock cbc_key = {0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef};
-        const_DES_cblock IV = {0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef};
-        const_DES_cblock IV2;
+        const_DES_cblock cbc_key ;
+        const_DES_cblock IV ;
         int k;
+		if(checkhex(argv[1])!=0)
+			{printf("è¯·è¾“å…¥16ä¸ª16è¿›åˆ¶æ•°ä½œä¸ºåˆå§‹å‘é‡IVï¼\n");return 0;}
+		if(checkhex(argv[2])!=0)
+			{printf("è¯·è¾“å…¥16ä¸ª16è¿›åˆ¶æ•°ä½œä¸ºåˆå§‹å¯†é’¥keyï¼\n");return 0;}
 
         strToHex((unsigned char*)argv[1], IV);
-		strToHex((unsigned char*)argv[1], IV2);
         strToHex((unsigned char*)argv[2], cbc_key);
-
         printvalueOfDesBlock(IV);
         printvalueOfDesBlock(cbc_key);
 
         if ((k = DES_set_key_checked(&cbc_key,&key)) != 0)
-		    printf("\nkey error\n");
+			{printf("\nç”Ÿæˆå¯†é’¥ä¸ç¬¦åˆè¦æ±‚ï¼\n");return 0;}
 
-		//char *decname = argv[4];
-		//strcat(decname,".dec");
-        //DES_LONG data[2] = {0, 0};
+
+		//å¯¹æ˜æ–‡è¿›è¡ŒåŠ å¯†
         FILE *inpFile = fopen(argv[3], "rb");
         FILE *outFile = fopen(argv[4], "wb");
-
-
         if(inpFile && outFile) {
-			printf("¼ÓÃÜÎÄ¼ş´´½¨³É¹¦\n");
+			printf("åŠ å¯†æ–‡ä»¶åˆ›å»ºæˆåŠŸï¼\n");
 			CBCenc(inpFile,outFile,IV);
         } else {
-            printf("Error in opening file\n");
+            printf("æ‰“å¼€æ–‡ä»¶å¤±è´¥ï¼\n");
         }
-
-	
-		
         fclose(inpFile);
         fclose(outFile);
 
+		//å¯¹å¯†æ–‡è¿›è¡Œè§£å¯†
 		FILE *incFile = fopen(argv[4], "rb");
 		FILE *decFile = fopen("decfile.txt", "wb");
-
 		if(incFile && decFile) {
-			printf("½âÃÜÎÄ¼ş´´½¨³É¹¦\n");
-			CBCdec(incFile,decFile,IV2);
+			printf("è§£å¯†æ–‡ä»¶åˆ›å»ºæˆåŠŸï¼\n");
+			CBCdec(incFile,decFile,IV);
         } else {
-            printf("Error in opening file\n");
+            printf("æ‰“å¼€æ–‡ä»¶å¤±è´¥ï¼\n");
         }
-		/*
-		int read1 = fread(ch, 1, 1, inpFile); // ¶ÁÈ¡8×Ö½ÚµÄÃÜÎÄ
-		while(read1 > 0){ // µ±»¹ÓĞÃÜÎÄÃ»ÓĞ¶ÁÈ¡ÍêµÄÊ±ºò
-			printf("%c ", ch[0]);
-			ch[0] = '\0';
-			read1 = fread(ch, 1, 1, inpFile); // ¶ÁÈ¡ÏÂÒ»¸ö8×Ö½Ú¿é
-		}
-		*/
-
 		fclose(incFile);
 		fclose(decFile);
-
+		/*
+		*æŒ‰å­—èŠ‚è¯»å–æ–‡ä»¶
 		FILE *mFile = fopen("decfile.txt", "rb");
 		unsigned char ch[1];
-		int read1 = fread(ch, 1, 1, mFile); // ¶ÁÈ¡8×Ö½ÚµÄÃÜÎÄ
-		while(read1 > 0){ // µ±»¹ÓĞÃÜÎÄÃ»ÓĞ¶ÁÈ¡ÍêµÄÊ±ºò
+		int read1 = fread(ch, 1, 1, mFile); // è¯»å–8å­—èŠ‚çš„å¯†æ–‡
+		while(read1 > 0){ // å½“è¿˜æœ‰å¯†æ–‡æ²¡æœ‰è¯»å–å®Œçš„æ—¶å€™
 			printf("%c ", ch[0]);
 			ch[0] = '\0';
-			read1 = fread(ch, 1, 1, mFile); // ¶ÁÈ¡ÏÂÒ»¸ö8×Ö½Ú¿é
+			read1 = fread(ch, 1, 1, mFile); // è¯»å–ä¸‹ä¸€ä¸ª8å­—èŠ‚å—
 		}
-		printf("\n");
 		fclose(mFile);
-        
+		*/
+        printf("\n");
     }
 	return 0;
 }
+
+
 
